@@ -15,7 +15,7 @@ st.set_page_config(page_title=SITE_NAME, layout="wide")
 
 st.markdown("""
 <style>
-.stApp { background-color: #0D1B2A; }
+.stApp { background: linear-gradient(to bottom, #0D1B2A, #1B263B, #415A77); }
 h1, h2, h3, p, span, label { color: #E0E1DD !important; }
 .stButton>button { background-color: #0077B6; color: white; border-radius: 12px; font-weight: bold; }
 .footer { position: fixed; bottom: 0; width: 100%; text-align: center; font-size: 12px; color: #778DA9; }
