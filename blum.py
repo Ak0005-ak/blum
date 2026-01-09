@@ -7,6 +7,12 @@ import io
 import zipfile
 from scipy.interpolate import griddata
 
+try:
+    from netCDF4 import Dataset, num2date
+    NETCDF4_AVAILABLE = True
+except ImportError:
+    NETCDF4_AVAILABLE = False
+
 # --------------------------------------------------
 # 1. CONFIG & THEME
 # --------------------------------------------------
