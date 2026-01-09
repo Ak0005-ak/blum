@@ -1,12 +1,12 @@
 import streamlit as st
-from netCDF4 import Dataset, num2date
-import xarray as xr
 import pandas as pd
 import numpy as np
 import io
 import zipfile
 from scipy.interpolate import griddata
+import xarray as xr
 
+# Optional: only import netCDF4 when needed
 try:
     from netCDF4 import Dataset, num2date
     NETCDF4_AVAILABLE = True
@@ -57,8 +57,18 @@ if uploaded_files:
     st.markdown("### 🗂 Select Variables and Clipping Extent for each file")
     for file in uploaded_files:
         try:
-            ds = xr.open_dataset(io.BytesIO(file.getvalue()))
-            
+            # Try reading via netCDF4 first
+            try:
+                if NETCDF4_AVAILABLE:
+                    ds_test = Dataset(io.BytesIO(file.getvalue()))
+                    ds_test.close()
+                    ds = xr.open_dataset(io.BytesIO(file.getvalue()), engine="netcdf4")
+                else:
+                    raise Exception("netCDF4 not available, using h5netcdf fallback")
+            except Exception:
+                # fallback to h5netcdf
+                ds = xr.open_dataset(io.BytesIO(file.getvalue()), engine="h5netcdf")
+
             # Detect spatial variables
             spatial_vars = [var for var in ds.data_vars if {'lat','lon'}.issubset(ds[var].dims)]
             if not spatial_vars:
@@ -99,12 +109,20 @@ if uploaded_files:
             st.error(f"⚠️ Could not read {file.name}: {e}")
 
 # --------------------------------------------------
-# 6. COPERNICUS HANDLER FUNCTION
+# 6. COPERNICUS HANDLER FUNCTION (with fallback)
 # --------------------------------------------------
 def handle_copernicus_file(file, selection):
     results = []
     try:
-        ds = xr.open_dataset(io.BytesIO(file.getvalue()))
+        # Try netCDF4 engine first
+        try:
+            if NETCDF4_AVAILABLE:
+                ds = xr.open_dataset(io.BytesIO(file.getvalue()), engine="netcdf4")
+            else:
+                raise Exception("netCDF4 not available, fallback to h5netcdf")
+        except Exception:
+            ds = xr.open_dataset(io.BytesIO(file.getvalue()), engine="h5netcdf")
+
         lat_min, lat_max = selection["lat_min"], selection["lat_max"]
         lon_min, lon_max = selection["lon_min"], selection["lon_max"]
 
@@ -135,7 +153,7 @@ def handle_copernicus_file(file, selection):
             values = df['value'].values
             grid_values = griddata(points, values, grid_points, method='linear')
 
-            # Fill any remaining NaNs using nearest
+            # Fill remaining NaNs with nearest
             nan_mask = np.isnan(grid_values)
             if np.any(nan_mask):
                 grid_values[nan_mask] = griddata(points, values, grid_points[nan_mask], method='nearest')
@@ -212,6 +230,3 @@ if st.session_state.final_excels:
             )
 
 st.markdown('<div class="footer">💀🌊Copernicus Blum Blumm Version 1.4.2@ak💦 Not your Ordinary Blub Obviously !!!!🌊💀</div>', unsafe_allow_html=True)
-
-
-
